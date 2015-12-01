@@ -1,192 +1,132 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- * All code and works here are created by Satria Priambada and team
- * You are free to use and distribute the code
- * We do not take responsibilities for any damage caused by using this code
- */
-
 package clientgomoku;
 
-/**
- * Class 
- *
- * Kelas yang digunakan untuk 
- *
- * @author Satria Priambada
- * @version 0.1
- */
+import java.io.BufferedReader;
+import static java.lang.Math.pow;
+import static java.lang.System.exit;
+import java.util.Scanner;
 
-import java.util.ArrayList;
-import java.util.List;
+public class SimpleBoard {
 
-import javafx.animation.KeyFrame;
-import javafx.animation.KeyValue;
-import javafx.animation.Timeline;
-import javafx.application.Application;
-import javafx.geometry.Pos;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
-import javafx.scene.input.MouseButton;
-import javafx.scene.layout.Pane;
-import javafx.scene.layout.StackPane;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Line;
-import javafx.scene.shape.Rectangle;
-import javafx.scene.text.Font;
-import javafx.scene.text.Text;
-import javafx.stage.Stage;
-import javafx.util.Duration;
+    enum State{Blank, X, O};
 
-public class SimpleBoard extends Application {
-
-    private boolean playable = true;
-    private boolean turnX = true;
-    private Tile[][] board = new Tile[20][20];
-    private List<Combo> combos = new ArrayList<>();
-
-    private Pane root = new Pane();
-
-    private Parent createContent() {
-        root.setPrefSize(800, 1000);
-
-        for (int i = 0; i < 20; i++) {
-            for (int j = 0; j < 20; j++) {
-                Tile tile = new Tile();
-                tile.setTranslateX(j * 30);
-                tile.setTranslateY(i * 30);
-
-                root.getChildren().add(tile);
-
-                board[i][j] = tile;
+    int n = 5;
+    int winCon = 3;
+    int counterNeighbour =0;
+    State[][] board = new State[n][n];
+    int moveCount;
+    public void initBoard(){
+        for (int i = 0; i < board.length; i++) {
+            for (int j = 0; j < board.length; j++) {
+                board[i][j] = State.Blank;
+                
             }
+            
         }
-
-        // horizontal
-        for (int y = 0; y < 3; y++) {
-            combos.add(new Combo(board[0][y], board[1][y], board[2][y]));
-        }
-
-        // vertical
-        for (int x = 0; x < 3; x++) {
-            combos.add(new Combo(board[x][0], board[x][1], board[x][2]));
-        }
-
-        // diagonals
-        combos.add(new Combo(board[0][0], board[1][1], board[2][2]));
-        combos.add(new Combo(board[2][0], board[1][1], board[0][2]));
-
-        return root;
     }
-
-    @Override
-    public void start(Stage primaryStage) throws Exception {
-        primaryStage.setScene(new Scene(createContent()));
-        primaryStage.show();
-    }
-
-    private void checkState() {
-        for (Combo combo : combos) {
-            if (combo.isComplete()) {
-                playable = false;
-                playWinAnimation(combo);
-                break;
+    
+    public void printBoard(){
+        for (int i = 0; i < board.length; i++) {
+            for (int j = 0; j < board.length; j++) {
+                System.out.print(board[i][j]+" ");
+                
             }
+            System.out.println();
         }
     }
 
-    private void playWinAnimation(Combo combo) {
-        Line line = new Line();
-        line.setStartX(combo.tiles[0].getCenterX());
-        line.setStartY(combo.tiles[0].getCenterY());
-        line.setEndX(combo.tiles[0].getCenterX());
-        line.setEndY(combo.tiles[0].getCenterY());
+    void Move(int x, int y, State s){
+    	if(board[x][y] == State.Blank){
+    		board[x][y] = s;
+                System.out.println(s);
+    	}
+    	moveCount++;
 
-        root.getChildren().add(line);
+    	//check end conditions
 
-        Timeline timeline = new Timeline();
-        timeline.getKeyFrames().add(new KeyFrame(Duration.seconds(1),
-                new KeyValue(line.endXProperty(), combo.tiles[2].getCenterX()),
-                new KeyValue(line.endYProperty(), combo.tiles[2].getCenterY())));
-        timeline.play();
+    	//check col
+    	for(int i = 0; i < n; i++){
+    		if(board[x][i] != s)
+                    counterNeighbour = 0;
+                else
+                    counterNeighbour++;
+    		if(winCon == counterNeighbour){
+    			//report win for s
+                    System.out.println("You Win " + s);
+                    exit(1);
+
+    		}
+    	}
+
+    	//check row
+    	for(int i = 0; i < n; i++){
+    		if(board[i][y] != s)
+                    counterNeighbour = 0;
+                else
+                    counterNeighbour++;
+    		if(winCon == counterNeighbour){
+    			//report win for s
+                    System.out.println("You Win " + s);
+                    exit(1);
+    		}
+    	}
+
+    	//check diag
+    	if(x == y){
+    		//we're on a diagonal
+    		for(int i = 0; i < n; i++){
+    			if(board[i][i] != s)
+                            counterNeighbour = 0;
+                        else
+                            counterNeighbour++;
+                        if(winCon == counterNeighbour){
+    				//report win for s
+                            System.out.println("You Win " + s);
+                            exit(1);
+
+    			}
+    		}
+    	}
+
+            //check anti diag (thanks rampion)
+    	for(int i = 0;i<n;i++){
+                if(board[i][(n-1)-i] != s)
+                    counterNeighbour = 0;
+                else
+                    counterNeighbour++;
+    		if(winCon == counterNeighbour){
+    			//report win for s
+                    System.out.println("You Win " + s);
+                    exit(1);
+
+    		}
+    	}
+
+    	//check draw
+    	if(moveCount == (pow(n,2) - 1)){
+    		//report draw
+            System.out.println("Its a draw ");
+            exit(1);
+
+    	}
     }
-
-    private class Combo {
-        private Tile[] tiles;
-        public Combo(Tile... tiles) {
-            this.tiles = tiles;
+    
+    public static void main (String[] args){
+        Scanner sc = new Scanner(System.in);
+        SimpleBoard Game = new SimpleBoard();
+        Game.initBoard();
+        int n = 5;
+        int move = (int) (pow(n,2) - 1);
+        System.out.println(move);
+        for (int i = 0; i <move; i++) {
+            int x = sc.nextInt();
+            int y = sc.nextInt();
+            System.out.println(x + " " + y);
+            if (i%2 == 0){
+                Game.Move(x, y, State.X);
+            } else {
+                Game.Move(x, y, State.O);
+            }
+            Game.printBoard();
         }
-
-        public boolean isComplete() {
-            if (tiles[0].getValue().isEmpty())
-                return false;
-
-            return tiles[0].getValue().equals(tiles[1].getValue())
-                    && tiles[0].getValue().equals(tiles[2].getValue());
-        }
-    }
-
-    private class Tile extends StackPane {
-        private Text text = new Text();
-
-        public Tile() {
-            Rectangle border = new Rectangle(30, 30);
-            border.setFill(null);
-            border.setStroke(Color.BLACK);
-
-            text.setFont(Font.font(30));
-
-            setAlignment(Pos.CENTER);
-            getChildren().addAll(border, text);
-
-            setOnMouseClicked(event -> {
-                if (!playable)
-                    return;
-
-                if (event.getButton() == MouseButton.PRIMARY) {
-                    if (!turnX)
-                        return;
-
-                    drawX();
-                    turnX = false;
-                    System.out.println("coord X: "+ this.getCenterX());
-                    System.out.println("coord Y: "+ this.getCenterY());
-                    checkState();
-                }
-                else if (event.getButton() == MouseButton.SECONDARY) {
-                    if (turnX)
-                        return;
-
-                    drawO();
-                    turnX = true;
-                    checkState();
-                }
-            });
-        }
-
-        public double getCenterX() {
-            return getTranslateX() + 15;
-        }
-
-        public double getCenterY() {
-            return getTranslateY() + 15;
-        }
-
-        public String getValue() {
-            return text.getText();
-        }
-
-        private void drawX() {
-            text.setText("X");
-        }
-
-        private void drawO() {
-            text.setText("O");
-        }
-    }
-
-    public static void main(String[] args) {
-        launch(args);
     }
 }

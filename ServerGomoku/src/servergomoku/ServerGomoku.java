@@ -14,23 +14,27 @@ import java.awt.*;
 import java.awt.event.*;
 import java.net.*;
 import java.io.*;
+import static java.lang.Math.pow;
+import static java.lang.System.exit;
 import javax.swing.*;
  
 public class ServerGomoku extends JFrame {
  
-   private byte board[];
-   private boolean xMove;
-   private JTextArea output;
-   private Player players[];
-   private ServerSocket server;
-   private int currentPlayer;
+   private byte board[]; //board permainan
+   private Player players[]; //list dari pemain
+   private ServerSocket server;//open serversocket untuk menerima request
+   private int currentPlayer;// penanda pemain yang boleh main
+   int counterNeighbour = 0; //menghitung berapa tetangga yang sama untuk mengecek kemenangan
+   int winCon = 5; //Gomoku perlu 5 tetangga
+   int moveCount = 0; //menghitung jumlah move, jika lebih berarti sudah draw
  
+   private JTextArea output;//tempat menulis text
+   
    public ServerGomoku()
    {
       super( "Gomoku Server" );
  
       board = new byte[ 400 ];
-      xMove = true;
       players = new Player[ 3 ];
       currentPlayer = 0;
   
@@ -127,9 +131,100 @@ public class ServerGomoku extends JFrame {
           return false;
    }
  
-   public boolean gameOver()
+   public boolean gameOver(int location, char currMark)
    {
       // Place code here to test for a winner of the game
+        int n = 20;
+        int x = location % n; // posisi secara horizontal alias kolom
+        int y = location / n; //posisi secara vertikal alias baris
+        
+    	//check col
+    	for(int i = 0; i < n; i++){
+            if(board[(y*n) + i] == (byte) currMark)
+                counterNeighbour++;
+            else
+                counterNeighbour = 0;
+            if(winCon == counterNeighbour){
+                //set winning col to W
+                for (int j = 0; j < winCon; j++) {
+                    board[(y*n) + i -j] = (byte)'W';
+                    
+                }
+                //report win for s
+                System.out.println("You Win " + currMark);
+                return true;
+
+            }
+    	}
+
+    	//check row
+    	for(int i = 0; i < n; i++){
+            if(board[(i*n) + x] != (byte) currMark)
+                counterNeighbour = 0;
+            else
+                counterNeighbour++;
+            if(winCon == counterNeighbour){
+                //set winning row to W
+                for (int j = 0; j < winCon; j++) {
+                    board[((i-j)*n) + x] = (byte)'W';
+                    
+                }
+    		//report win for s
+                    System.out.println("You Win " + currMark);
+                    return true;
+            }
+    	}
+
+    	//check diag
+//    	if(x == y){
+            //we're on a diagonal
+            for(int i = 0; i < n; i++){
+                    if(board[(i*n) + i] != (byte) currMark)
+                        counterNeighbour = 0;
+                    else
+                        counterNeighbour++;
+                    if(winCon == counterNeighbour){
+                        //set winning row to W
+                        for (int j = 0; j < winCon; j++) {
+                            board[((i-j)*n) + (i-j)] = (byte)'W';
+
+                        }
+                        //report win for s
+                        System.out.println("You Win " + currMark);
+                        return true;
+
+                    }
+            }
+//    	}
+
+        //check anti diag (thanks rampion)
+    	for(int i = 0;i<n;i++){
+            if(board[(i*n) + ((n-1)-i)] != (byte) currMark)
+                counterNeighbour = 0;
+            else
+                counterNeighbour++;
+            if(winCon == counterNeighbour){
+                //set winning row to W
+                for (int j = 0; j < winCon; j++) {
+                    board[((i-j)*n) + ((n-1)-(i-j))] = (byte)'W';
+                    
+                }
+                //report win for s
+                System.out.println("You Win " + currMark);
+                return true;
+
+            }
+    	}
+        moveCount++;
+
+    	//check draw
+    	if(moveCount == (pow(n,2) - 1)){
+    		//report draw
+            System.out.println("Its a draw ");
+            return true;
+
+    	}
+        System.out.println(moveCount);
       return false;
    }
  
@@ -235,6 +330,7 @@ class Player extends Thread {
          }
  
          // Play game
+         char currMark ='a';
          while ( !done ) {
             int location = input.readInt();
  
@@ -244,11 +340,11 @@ class Player extends Thread {
             }
             else
                output.writeUTF( "Invalid move, try again" );
- 
-            if ( control.gameOver() )
+            currMark = input.readChar();
+            if ( control.gameOver(location,currMark) )
                done = true;
          }         
- 
+         output.writeUTF("WINNER " + currMark);
          connection.close();
       }
       catch( IOException e ) {

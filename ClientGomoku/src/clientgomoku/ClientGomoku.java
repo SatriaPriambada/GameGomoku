@@ -182,6 +182,7 @@ public class ClientGomoku extends JApplet
       if ( myTurn )
          try {
             output.writeInt( loc );
+            output.writeChar(myMark);
             myTurn = false;
          }
          catch ( IOException ie ) {
