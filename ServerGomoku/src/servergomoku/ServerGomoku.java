@@ -86,8 +86,6 @@ public class ServerGomoku extends JFrame {
    public synchronized boolean validMove( int loc,
                                           int player )
    {
-      boolean moveDone = false;
- 
       while ( player != currentPlayer ) {
          try {
             wait();
@@ -102,7 +100,7 @@ public class ServerGomoku extends JFrame {
             board[ loc ] =(byte) ('X');
             movingPlayer = 'X';
          }else if (currentPlayer == 1){
-            board[ loc ] =(byte) ('0');
+            board[ loc ] =(byte) ('O');
             movingPlayer = 'O';
          }else if (currentPlayer == 2){
             board[ loc ] =(byte) ('#');
