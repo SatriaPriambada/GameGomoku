@@ -14,6 +14,8 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyAdapter;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
@@ -22,6 +24,12 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
+import javax.swing.AbstractAction;
+import javax.swing.Action;
 import javax.swing.JApplet;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -32,6 +40,7 @@ public class ClientGomoku extends JApplet
                              implements Runnable {
    private JTextField id;
    private JTextArea display;
+   private JTextField sendPanel;
    private JPanel boardPanel, panel2;
    private Square board[][], currentSquare;
    private Socket connection;
@@ -39,13 +48,32 @@ public class ClientGomoku extends JApplet
    private DataOutputStream output;
    private Thread outputThread;
    private char myMark;
-   private boolean myTurn;
-
- 
+   private boolean myTurn; 
    // Set up user-interface and board
+   @Override
    public void init()
    {
       display = new JTextArea( 4, 15 );
+      sendPanel = new JTextField();
+      sendPanel.setEditable(true);
+      Action action = new AbstractAction()
+        {
+            @Override
+            public void actionPerformed(ActionEvent e)
+            {
+                
+                System.out.println("sending message");
+                String broadcastMessage = myMark + " : " + sendPanel.getText() + "\n";
+                sendPanel.setText("");
+                try {
+                    output.writeUTF(broadcastMessage);
+                } catch (IOException ex) {
+                    Logger.getLogger(ClientGomoku.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        };
+      sendPanel.addActionListener(action);
+
       display.setEditable( false );
       getContentPane().add( new JScrollPane( display ),
                             BorderLayout.EAST );
@@ -80,6 +108,7 @@ public class ClientGomoku extends JApplet
        
       panel2 = new JPanel();
       panel2.add( boardPanel, BorderLayout.CENTER );
+      getContentPane().add(sendPanel,BorderLayout.NORTH);
       getContentPane().add( panel2, BorderLayout.CENTER );
    }
  
@@ -90,11 +119,9 @@ public class ClientGomoku extends JApplet
    {
       try {
          connection = new Socket(
-            InetAddress.getByName( "127.0.0.1" ), 5000 );
-         input = new DataInputStream(
-                        connection.getInputStream() );
-         output = new DataOutputStream(
-                        connection.getOutputStream() );
+            InetAddress.getByName( "127.0.0.1" ), 7777 );
+         input = new DataInputStream(connection.getInputStream() );
+         output = new DataOutputStream( connection.getOutputStream() );
       }
       catch ( IOException e ) {
          e.printStackTrace();         
@@ -158,6 +185,8 @@ public class ClientGomoku extends JApplet
                 board[ loc / 20 ][ loc % 20 ].setMark('O');
             }else if (movingPlayer == '#'){
                 board[ loc / 20 ][ loc % 20 ].setMark('#');
+            }else if (movingPlayer == 'W'){
+                board[ loc / 20 ][ loc % 20 ].setMark('W');
             }
             
             board[ loc / 20 ][ loc % 20 ].repaint();
@@ -181,6 +210,7 @@ public class ClientGomoku extends JApplet
    {
       if ( myTurn )
          try {
+            output.writeUTF("MOVE");
             output.writeInt( loc );
             output.writeChar(myMark);
             myTurn = false;

@@ -40,7 +40,7 @@ public class ServerGomoku extends JFrame {
   
       // set up ServerSocket
       try {
-         server = new ServerSocket( 5000, 3 );
+         server = new ServerSocket( 7777, 3 );
       }
       catch( IOException e ) {
          e.printStackTrace();
@@ -60,8 +60,7 @@ public class ServerGomoku extends JFrame {
    {
       for ( int i = 0; i < players.length; i++ ) {
          try {
-            players[ i ] =
-               new Player( server.accept(), this, i );
+            players[ i ] = new Player( server.accept(), this, i );
             players[ i ].start();
          }
          catch( IOException e ) {
@@ -70,8 +69,8 @@ public class ServerGomoku extends JFrame {
          }
       }
  
-      // Player X is suspended until Player O connects.
-      // Resume player X now.          
+      // Player X tidak bisa bergerak hingga semua player sudah connect.
+      // Resume player X dan mulai permainan.          
       synchronized ( players[ 0 ] ) {
          players[ 0 ].threadSuspended = false;   
          players[ 0 ].notify();
@@ -87,8 +86,7 @@ public class ServerGomoku extends JFrame {
    // Determine if a move is valid.
    // This method is synchronized because only one move can be
    // made at a time.
-   public synchronized boolean validMove( int loc,
-                                          int player )
+   public synchronized boolean validMove( int loc,int player )
    {
       while ( player != currentPlayer ) {
          try {
@@ -110,7 +108,7 @@ public class ServerGomoku extends JFrame {
             board[ loc ] =(byte) ('#');
             movingPlayer = '#';
          }
-        
+        //prints in all client boards
           for (int i = 0; i < players.length; i++) {
               players[i].otherPlayerMoved(loc,movingPlayer);
           }
@@ -148,7 +146,13 @@ public class ServerGomoku extends JFrame {
                 //set winning col to W
                 for (int j = 0; j < winCon; j++) {
                     board[(y*n) + i -j] = (byte)'W';
-                    
+                    for (int l = 0; l < players.length; l++) {
+                        players[l].otherPlayerMoved((y*n) + i -j,'W');
+                    }
+                }
+                //broadcast winning message to all player
+                for (int j = 0; j < players.length; j++) {
+                    players[j].broadcast("We have a winner " + currMark);
                 }
                 //report win for s
                 System.out.println("You Win " + currMark);
@@ -167,7 +171,13 @@ public class ServerGomoku extends JFrame {
                 //set winning row to W
                 for (int j = 0; j < winCon; j++) {
                     board[((i-j)*n) + x] = (byte)'W';
-                    
+                    for (int l = 0; l < players.length; l++) {
+                        players[l].otherPlayerMoved(((i-j)*n) + x,'W');
+                    }
+                }
+                //broadcast winning message to all player
+                for (int j = 0; j < players.length; j++) {
+                    players[j].broadcast("We have a winner " + currMark);
                 }
     		//report win for s
                     System.out.println("You Win " + currMark);
@@ -176,26 +186,30 @@ public class ServerGomoku extends JFrame {
     	}
 
     	//check diag
-//    	if(x == y){
-            //we're on a diagonal
-            for(int i = 0; i < n; i++){
-                    if(board[(i*n) + i] != (byte) currMark)
-                        counterNeighbour = 0;
-                    else
-                        counterNeighbour++;
-                    if(winCon == counterNeighbour){
-                        //set winning row to W
-                        for (int j = 0; j < winCon; j++) {
-                            board[((i-j)*n) + (i-j)] = (byte)'W';
-
-                        }
-                        //report win for s
-                        System.out.println("You Win " + currMark);
-                        return true;
-
+        for(int i = 0; i < n; i++){
+            if(board[(i*n) + i] != (byte) currMark)
+                counterNeighbour = 0;
+            else
+                counterNeighbour++;
+            if(winCon == counterNeighbour){
+                //set winning row to W
+                for (int j = 0; j < winCon; j++) {
+                    board[((i-j)*n) + (i-j)] = (byte)'W';
+                    for (int l = 0; l < players.length; l++) {
+                        players[l].otherPlayerMoved(location,'W');
                     }
+
+                }
+                //broadcast winning message to all player
+                for (int j = 0; j < players.length; j++) {
+                    players[j].broadcast("We have a winner " + currMark);
+                }
+                //report win for s
+                System.out.println("You Win " + currMark);
+                return true;
+
             }
-//    	}
+        }
 
         //check anti diag (thanks rampion)
     	for(int i = 0;i<n;i++){
@@ -207,7 +221,13 @@ public class ServerGomoku extends JFrame {
                 //set winning row to W
                 for (int j = 0; j < winCon; j++) {
                     board[((i-j)*n) + ((n-1)-(i-j))] = (byte)'W';
-                    
+                    for (int l = 0; l < players.length; l++) {
+                        players[l].otherPlayerMoved(location,'W');
+                    }
+                }
+                //broadcast winning message to all player
+                for (int j = 0; j < players.length; j++) {
+                    players[j].broadcast("We have a winner " + currMark);
                 }
                 //report win for s
                 System.out.println("You Win " + currMark);
@@ -242,6 +262,12 @@ public class ServerGomoku extends JFrame {
  
       game.execute();
    }
+
+    public void broadcastAll(String broadcastMessage) {
+        for (int j = 0; j < players.length; j++) {
+            players[j].broadcast(broadcastMessage);
+        }
+    }
 }
  
 // Player class to manage each Player as a thread
@@ -266,10 +292,8 @@ class Player extends Thread {
       connection = s;
        
       try {
-         input = new DataInputStream(
-                    connection.getInputStream() );
-         output = new DataOutputStream(
-                    connection.getOutputStream() );
+         input = new DataInputStream(connection.getInputStream() );
+         output = new DataOutputStream(connection.getOutputStream() );
       }
       catch( IOException e ) {
          e.printStackTrace();
@@ -286,6 +310,14 @@ class Player extends Thread {
          output.writeUTF( "Opponent moved" );
          output.writeInt( loc );
          output.writeChar(movingPlayer);
+      }
+      catch ( IOException e ) { e.printStackTrace(); }
+   }
+   
+   public void broadcast( String broadcastM)
+   {
+      try {
+         output.writeUTF( broadcastM);
       }
       catch ( IOException e ) { e.printStackTrace(); }
    }
@@ -331,18 +363,25 @@ class Player extends Thread {
  
          // Play game
          char currMark ='a';
+         String broadcastMessage = new String();
          while ( !done ) {
-            int location = input.readInt();
- 
-            if ( control.validMove( location, number ) ) {
-               control.display( "loc: " + location );
-               output.writeUTF( "Valid move." );
+            broadcastMessage = input.readUTF();
+            //read the message if started with MOVE then move else is a chat
+            if (broadcastMessage.equals("MOVE")){
+                int location = input.readInt();
+                if ( control.validMove( location, number ) ) {
+                   control.display( "loc: " + location );
+                   output.writeUTF( "Valid move." );
+                }
+                else
+                   output.writeUTF( "Invalid move, try again" );
+                
+                currMark = input.readChar();
+                if ( control.gameOver(location,currMark) )
+                    done = true;
+            }else {
+                control.broadcastAll(broadcastMessage);
             }
-            else
-               output.writeUTF( "Invalid move, try again" );
-            currMark = input.readChar();
-            if ( control.gameOver(location,currMark) )
-               done = true;
          }         
          output.writeUTF("WINNER " + currMark);
          connection.close();
