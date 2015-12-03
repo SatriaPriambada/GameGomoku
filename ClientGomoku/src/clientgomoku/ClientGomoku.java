@@ -97,7 +97,7 @@ public class ClientGomoku extends JApplet implements Runnable {
                 case JOptionPane.YES_OPTION:
                    System.out.println("You clicked YES");
                    id.repaint();
-                   getContentPane().add( id, BorderLayout.WEST );
+                   id.revalidate();
                    start(inIPaddr);
                    break;
                 case JOptionPane.NO_OPTION:

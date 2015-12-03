@@ -26,6 +26,7 @@ public class ServerGomoku extends JFrame {
    int counterNeighbour = 0; //menghitung berapa tetangga yang sama untuk mengecek kemenangan
    int winCon = 5; //Gomoku perlu 5 tetangga
    int moveCount = 0; //menghitung jumlah move, jika lebih berarti sudah draw
+   boolean menang = false;
  
    private JTextArea output;//tempat menulis text
    
@@ -128,6 +129,59 @@ public class ServerGomoku extends JFrame {
           return false;
    }
  
+   public boolean checkDiagonal (int x, int y, byte[] board, int winCondition, char sym, String check)
+    {
+        int j = y;
+        boolean menang = false;
+        int countWin = 0;
+        if(menang == false)
+        {
+            if (check.equalsIgnoreCase("UR"))
+            {
+                for (int i=x; i>x-winCondition; i--)
+                {
+                    if (board[i + (20*j)] == sym)
+                    {
+                        countWin++;
+                    }
+                    else
+                    {
+                        countWin = 0;
+                    }
+                    if (countWin == winCondition)
+                    {
+                        // winner has been decided, exit game
+                        menang = true;
+                        break;
+                    }
+                    j++;
+                }
+            }
+            else
+            {
+                for (int i=x; i<x+winCondition; i++)
+                {
+                    if (board[i + (20*j)] == sym)
+                    {
+                        countWin++;
+                    }
+                    else
+                    {
+                        countWin = 0;
+                    }
+                    if (countWin == winCondition)
+                    {
+                        // winner has been decided, exit game
+                        menang = true;
+                        break;
+                    }
+                    j++;
+                }            
+            }
+        }
+        return menang;
+    }
+   
    public boolean gameOver(int location, char currMark)
    {
       // Place code here to test for a winner of the game
@@ -179,61 +233,83 @@ public class ServerGomoku extends JFrame {
                     players[j].broadcast("We have a winner " + currMark);
                 }
     		//report win for s
-                    System.out.println("You Win " + currMark);
-                    return true;
+                System.out.println("You Win " + currMark);
+                return true;
             }
     	}
 
     	//check diag
-        for(int i = 0; i < n; i++){
-            if(board[(i*n) + i] != (byte) currMark)
-                counterNeighbour = 0;
-            else
-                counterNeighbour++;
-            if(winCon == counterNeighbour){
-                //set winning row to W
-                for (int j = 0; j < winCon; j++) {
-                    board[((i-j)*n) + (i-j)] = (byte)'W';
-                    for (int l = 0; l < players.length; l++) {
-                        players[l].otherPlayerMoved(location,'W');
+        if (menang==false)
+        {
+            // diagonal (up right)
+            
+            for (int i=0; i<n; i++)
+            {
+                for (int j=0; j<n; j++)
+                {
+                    System.out.println(i+(j*n));
+                    if (board[i+(j*n)] == currMark)
+                    {
+                        if ((i < winCon-1) || (j > board.length-winCon))
+                        {
+                            // do nothing
+                        }
+                        else
+                        {
+                            System.out.println(i + " " + j +" coord");
+                            menang = checkDiagonal(i,j,board,winCon,currMark,"UR");
+                    
+                        }
                     }
-
+                    if (menang==true)
+                    {
+                        //broadcast winning message to all player
+                    for (int h = 0; h < players.length; h++) {
+                        players[h].broadcast("We have a winner " + currMark);
+                    }
+                    //report win for s
+                    System.out.println("You Win " + currMark);
+                        return true;
+                    }
                 }
-                //broadcast winning message to all player
-                for (int j = 0; j < players.length; j++) {
-                    players[j].broadcast("We have a winner " + currMark);
-                }
-                //report win for s
-                System.out.println("You Win " + currMark);
-                return true;
-
             }
         }
-
-        //check anti diag (thanks rampion)
-    	for(int i = 0;i<n;i++){
-            if(board[(i*n) + ((n-1)-i)] != (byte) currMark)
-                counterNeighbour = 0;
-            else
-                counterNeighbour++;
-            if(winCon == counterNeighbour){
-                //set winning row to W
-                for (int j = 0; j < winCon; j++) {
-                    board[((i-j)*n) + ((n-1)-(i-j))] = (byte)'W';
-                    for (int l = 0; l < players.length; l++) {
-                        players[l].otherPlayerMoved(location,'W');
+        
+        //check anti diagonal
+        
+        if (menang==false)
+        {
+            // diagonal (down right)
+            
+            for (int i=0; i<n; i++)
+            {
+                for (int j=0; j<n; j++)
+                {
+                    if (board[i + (20*j)] == currMark)
+                    {
+                        if ((i > board.length-winCon) || (j > board.length-winCon))
+                        {
+                            // do nothing
+                        }
+                        else
+                        {
+                            System.out.println(i + " " + j +" coord");
+                            menang = checkDiagonal(i,j,board,winCon,currMark,"DR");
+                        }
+                    }
+                    if (menang==true)
+                    {
+                        //broadcast winning message to all player
+                        for (int m = 0; m < players.length; m++) {
+                            players[m].broadcast("We have a winner " + currMark);
+                        }
+                        //report win for s
+                        System.out.println("You Win " + currMark);
+                        return true;
                     }
                 }
-                //broadcast winning message to all player
-                for (int j = 0; j < players.length; j++) {
-                    players[j].broadcast("We have a winner " + currMark);
-                }
-                //report win for s
-                System.out.println("You Win " + currMark);
-                return true;
-
             }
-    	}
+        } 
         moveCount++;
 
     	//check draw
@@ -244,7 +320,7 @@ public class ServerGomoku extends JFrame {
 
     	}
         System.out.println(moveCount);
-      return false;
+        return false;
    }
  
    public static void main( String args[] )
