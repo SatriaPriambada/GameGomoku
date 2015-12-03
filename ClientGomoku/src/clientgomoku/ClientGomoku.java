@@ -16,7 +16,6 @@ import java.awt.Graphics;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.KeyAdapter;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
@@ -40,7 +39,7 @@ import javax.swing.JTextField;
 public class ClientGomoku extends JApplet implements Runnable {
    private JTextField id;
    private JTextArea display;
-   private JTextField sendPanel;
+   private JTextField sendPlace;
    private JButton buttonStart;
    private JButton buttonNewRoom;
    private JButton buttonJoinRoom;
@@ -55,25 +54,27 @@ public class ClientGomoku extends JApplet implements Runnable {
    private String inUsernameStr;
    private String inIPaddr;
    private boolean myTurn;
+   private boolean stillConnected;
    // Set up user-interface and board
    @Override
    public void init()
    {
       display = new JTextArea( 4, 15 );
-      sendPanel = new JTextField();
-      sendPanel.setEditable(true);
+      sendPlace = new JTextField();
+      sendPlace.setEditable(true);
       buttonStart = new JButton("Start");
       buttonNewRoom = new JButton("Create New Room");
       buttonJoinRoom = new JButton("Join Room");
       buttonDisconnect = new JButton("Disconnect");
+      
       Action action = new AbstractAction()
         {
             @Override
             public void actionPerformed(ActionEvent e)
             {
                 
-                String broadcastMessage = myMark + " : " + sendPanel.getText() + "\n";
-                sendPanel.setText("");
+                String broadcastMessage = myMark + " : " + sendPlace.getText() + "\n";
+                sendPlace.setText("");
                 try {
                     output.writeUTF(broadcastMessage);
                 } catch (IOException ex) {
@@ -81,69 +82,72 @@ public class ClientGomoku extends JApplet implements Runnable {
                 }
             }
         };
-      sendPanel.addActionListener(action);
+      sendPlace.addActionListener(action);
+     
       
-      buttonStart.addActionListener(new ActionListener() {
-         public void actionPerformed(ActionEvent ae){
-             System.out.println("Clicked start");
-             inUsernameStr = JOptionPane.showInputDialog(null, "Insert Username","Username", JOptionPane.PLAIN_MESSAGE);
-             inIPaddr = JOptionPane.showInputDialog(null, "Insert IP Address", "IP Address" ,JOptionPane.PLAIN_MESSAGE);
-             System.out.println("You have entered " + inUsernameStr);
-             JOptionPane.showMessageDialog(null, "Your username : " + inUsernameStr,
-                   "Confirm Username", JOptionPane.PLAIN_MESSAGE);
-             int answer = JOptionPane.showConfirmDialog(null, "Are you sure to connect to IP " + inIPaddr,
-                   "Confirm IP", JOptionPane.YES_NO_OPTION);
-             switch (answer) {
-                case JOptionPane.YES_OPTION:
-                   System.out.println("You clicked YES");
-                   id.repaint();
-                   id.revalidate();
-                   start(inIPaddr);
-                   break;
-                case JOptionPane.NO_OPTION:
-                   System.out.println("You clicked NO"); break;
-            }
-         } 
-      });
-      
-      buttonNewRoom.addActionListener(new ActionListener() {
-        // When button is clicked, send message to the server
-        // create new board of game on th server
-         @Override
-         public void actionPerformed(ActionEvent ae){
-             System.out.println("Clicked");
-             try {
-                 output.writeUTF("CREATE_NEW_ROOM");
-             } catch (IOException ex) {
-                 Logger.getLogger(ClientGomoku.class.getName()).log(Level.SEVERE, null, ex);
-             }
-         } 
-      });
-      
-      buttonJoinRoom.addActionListener(new ActionListener() {
-        // When button is clicked, send message to the server
-        // requesting the list of board that is being active in the server
-        // Show the list of room which are ready to play
-        // Choose the room by using the room 
-         @Override
-         public void actionPerformed(ActionEvent ae){
-             System.out.println("Clicked");
-             try {
-                 output.writeUTF("SEND_ROOM_INFO");
-             } catch (IOException ex) {
-                 Logger.getLogger(ClientGomoku.class.getName()).log(Level.SEVERE, null, ex);
-             }
-         }
-         
-      });
-      
-      buttonDisconnect.addActionListener(new ActionListener() {
-         public void actionPerformed(ActionEvent ae){
-             System.out.println("Clicked");
-         } 
-      });
-             
+        buttonStart.addActionListener(new ActionListener() {
+           public void actionPerformed(ActionEvent ae){
+               System.out.println("Clicked start");
+               inUsernameStr = JOptionPane.showInputDialog(null, "Insert Username","Username", JOptionPane.PLAIN_MESSAGE);
+               inIPaddr = JOptionPane.showInputDialog(null, "Insert IP Address", "IP Address" ,JOptionPane.PLAIN_MESSAGE);
+               System.out.println("You have entered " + inUsernameStr);
+               JOptionPane.showMessageDialog(null, "Your username : " + inUsernameStr,
+                     "Confirm Username", JOptionPane.PLAIN_MESSAGE);
+               int answer = JOptionPane.showConfirmDialog(null, "Are you sure to connect to IP " + inIPaddr,
+                     "Confirm IP", JOptionPane.YES_NO_OPTION);
+               switch (answer) {
+                  case JOptionPane.YES_OPTION:
+                     System.out.println("You clicked YES");
+                     start(inIPaddr);
+                     break;
+                  case JOptionPane.NO_OPTION:
+                     System.out.println("You clicked NO"); break;
+              }
+           } 
+        });
 
+        buttonDisconnect.addActionListener(new ActionListener() {
+           public void actionPerformed(ActionEvent ae){
+               System.out.println("Clicked");
+               try {
+                   connection.close();
+               } catch (IOException ex) {
+                   Logger.getLogger(ClientGomoku.class.getName()).log(Level.SEVERE, null, ex);
+               }
+           }
+        });
+      
+
+        buttonJoinRoom.addActionListener(new ActionListener() {
+            // When button is clicked, send message to the server
+            // requesting the list of board that is being active in the server
+            // Show the list of room which are ready to play
+            // Choose the room by using the room 
+             @Override
+             public void actionPerformed(ActionEvent ae){
+                 System.out.println("Clicked");
+                 try {
+                     output.writeUTF("SEND_ROOM_INFO");
+                 } catch (IOException ex) {
+                     Logger.getLogger(ClientGomoku.class.getName()).log(Level.SEVERE, null, ex);
+                 }
+             }
+         });
+    
+        buttonNewRoom.addActionListener(new ActionListener() {
+          // When button is clicked, send message to the server
+          // create new board of game on th server
+           @Override
+           public void actionPerformed(ActionEvent ae){
+               System.out.println("Clicked");
+               try {
+                   output.writeUTF("CREATE_NEW_ROOM");
+               } catch (IOException ex) {
+                   Logger.getLogger(ClientGomoku.class.getName()).log(Level.SEVERE, null, ex);
+               }
+           } 
+        });
+         
       display.setEditable( false );
       getContentPane().add( new JScrollPane( display ),BorderLayout.EAST );
  
@@ -166,8 +170,8 @@ public class ClientGomoku extends JApplet implements Runnable {
          }
       }
  
-      id = new JTextField("Username:" + inUsernameStr);
-      id.setEditable( true );
+      id = new JTextField();
+      id.setEditable( false );
        
       
        
@@ -180,9 +184,9 @@ public class ClientGomoku extends JApplet implements Runnable {
       panelSouth.add (buttonDisconnect);
       
       getContentPane().add( panelSouth,BorderLayout.SOUTH);
-      getContentPane().add( sendPanel,BorderLayout.NORTH);
+      getContentPane().add( sendPlace,BorderLayout.NORTH);
       getContentPane().add( panelEast, BorderLayout.CENTER );
-      
+      getContentPane().add( id,BorderLayout.WEST);
    }
  
    // Make connection to server and get associated streams.
@@ -211,7 +215,7 @@ public class ClientGomoku extends JApplet implements Runnable {
       // First get player's mark (X, O, or #)
       try {
          myMark = input.readChar();
-         id.setText( "You are player \"" + inUsernameStr + "\"" );
+         id.setText( "You are player " + inUsernameStr );
          if( myMark == 'X' ){
              myTurn = true;
          }else if( myMark == 'O' ){
@@ -223,9 +227,9 @@ public class ClientGomoku extends JApplet implements Runnable {
       catch ( IOException e ) {
          e.printStackTrace();         
       }
- 
+      stillConnected = true;
       // Receive messages sent to client
-      while ( true ) {
+      while ( stillConnected ) {
          try {
             String s = input.readUTF();
             processMessage( s );
@@ -272,6 +276,10 @@ public class ClientGomoku extends JApplet implements Runnable {
             e.printStackTrace();         
          }
       }
+      else if ( s.equals( "CLOSED CONNECTION" ) ) {
+         display.append( s + "\nPlease restart your program\n" );
+         stillConnected = false;
+      }
       else
          display.append( s + "\n" );
  
@@ -301,51 +309,51 @@ public class ClientGomoku extends JApplet implements Runnable {
  
 // Maintains one square on the board
 class Square extends JPanel {
-   private char mark;
-   private int location;
- 
-   public Square( char m, int loc)
-   {
-      mark = m;
-      location = loc;
-      setSize ( 25, 25 );
-       
-      setVisible(true);
-   }
- 
-   public Dimension getPreferredSize() { 
-      return ( new Dimension( 25, 25 ) );
-   }
- 
-   public Dimension getMinimumSize() {
-      return ( getPreferredSize() );
-   }
- 
-   public void setMark( char c ) { mark = c; }
- 
-   public int getSquareLocation() { return location; }
- 
-   public void paintComponent( Graphics g )
-   {
-      super.paintComponent( g );
-      g.drawRect( 0, 0, 25, 25 );
-      g.drawString( String.valueOf( mark ), 11, 20 );   
-   }
+    private char mark;
+    private int location;
+
+    public Square( char m, int loc)
+    {
+       mark = m;
+       location = loc;
+       setSize ( 25, 25 );
+
+       setVisible(true);
+    }
+
+    public Dimension getPreferredSize() { 
+       return ( new Dimension( 25, 25 ) );
+    }
+
+    public Dimension getMinimumSize() {
+       return ( getPreferredSize() );
+    }
+
+    public void setMark( char c ) { mark = c; }
+
+    public int getSquareLocation() { return location; }
+
+    public void paintComponent( Graphics g )
+    {
+       super.paintComponent( g );
+       g.drawRect( 0, 0, 25, 25 );
+       g.drawString( String.valueOf( mark ), 11, 20 );   
+    }
 }
  
 class SquareListener extends MouseAdapter {
-   private ClientGomoku applet;
-   private Square square;
- 
-   public SquareListener( ClientGomoku t, Square s )
-   {
-      applet = t;
-      square = s;
-   }
- 
-   public void mouseReleased( MouseEvent e )
-   {
-      applet.setCurrentSquare( square );
-      applet.sendClickedSquare( square.getSquareLocation() );
-   }
+    private ClientGomoku applet;
+    private Square square;
+
+    public SquareListener( ClientGomoku t, Square s )
+    {
+       applet = t;
+       square = s;
+    }
+
+    public void mouseReleased( MouseEvent e )
+    {
+       applet.setCurrentSquare( square );
+       applet.sendClickedSquare( square.getSquareLocation() );
+    }
 }

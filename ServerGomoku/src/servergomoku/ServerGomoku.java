@@ -15,6 +15,8 @@ import java.awt.event.*;
 import java.net.*;
 import java.io.*;
 import static java.lang.Math.pow;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.*;
  
 public class ServerGomoku extends JFrame {
@@ -30,7 +32,7 @@ public class ServerGomoku extends JFrame {
  
    private JTextArea output;//tempat menulis text
    
-   public ServerGomoku()
+   public ServerGomoku(int PORT)
    {
       super( "Gomoku Server" );
  
@@ -40,7 +42,7 @@ public class ServerGomoku extends JFrame {
   
       // set up ServerSocket
       try {
-         server = new ServerSocket( 7777, 3 );
+         server = new ServerSocket( PORT, 3 );
       }
       catch( IOException e ) {
          e.printStackTrace();
@@ -150,6 +152,18 @@ public class ServerGomoku extends JFrame {
                     }
                     if (countWin == winCondition)
                     {
+                        int l = j;
+                        int k = i;
+                        for (k=i;k<i+winCondition;k++)
+                        {
+                            board[k + (20*l)] = (byte)('W');
+                            //prints in all client boards
+                            for (int iterator = 0; iterator < players.length; iterator++) {
+                                int loc = k +(20*l); 
+                                players[iterator].otherPlayerMoved(loc,'W');
+                            }
+                            l--;
+                        }
                         // winner has been decided, exit game
                         menang = true;
                         break;
@@ -171,6 +185,18 @@ public class ServerGomoku extends JFrame {
                     }
                     if (countWin == winCondition)
                     {
+                        int l=j;
+                        int k=i;
+                        for (k=i;k>i-winCondition;k--)
+                        {
+                            board[k + (20*l)] = (byte) 'W';
+                            //prints in all client boards
+                            for (int iterator = 0; iterator < players.length; iterator++) {
+                                int loc = k +(20*l); 
+                                players[iterator].otherPlayerMoved(loc,'W');
+                            }
+                            l--;
+                        }
                         // winner has been decided, exit game
                         menang = true;
                         break;
@@ -198,7 +224,7 @@ public class ServerGomoku extends JFrame {
             if(winCon == counterNeighbour){
                 //set winning col to W
                 for (int j = 0; j < winCon; j++) {
-                    board[(y*n) + i -j] = (byte)'W';
+                    board[(y*n) + i -j] = (byte)('W');
                     for (int l = 0; l < players.length; l++) {
                         players[l].otherPlayerMoved((y*n) + i -j,'W');
                     }
@@ -223,7 +249,7 @@ public class ServerGomoku extends JFrame {
             if(winCon == counterNeighbour){
                 //set winning row to W
                 for (int j = 0; j < winCon; j++) {
-                    board[((i-j)*n) + x] = (byte)'W';
+                    board[((i-j)*n) + x] = (byte)('W');
                     for (int l = 0; l < players.length; l++) {
                         players[l].otherPlayerMoved(((i-j)*n) + x,'W');
                     }
@@ -315,7 +341,7 @@ public class ServerGomoku extends JFrame {
     	//check draw
     	if(moveCount == (pow(n,2) - 1)){
             //report draw
-            System.out.println("Its a draw ");
+            System.out.println("Its a draw");
             return true;
 
     	}
@@ -325,17 +351,17 @@ public class ServerGomoku extends JFrame {
  
    public static void main( String args[] )
    {
-      ServerGomoku game = new ServerGomoku();
- 
-      game.addWindowListener( new WindowAdapter() {
-        public void windowClosing( WindowEvent e )
-            {
-               System.exit( 0 );
-            }
-         }
-      );
- 
-      game.execute();
+        ServerGomoku game = new ServerGomoku(7777);
+
+        game.addWindowListener( new WindowAdapter() {
+          public void windowClosing( WindowEvent e )
+              {
+                 System.exit( 0 );
+              }
+           }
+        );
+
+        game.execute();
    }
 
     public void broadcastAll(String broadcastMessage) {
@@ -355,7 +381,7 @@ class Player extends Thread {
    private char mark;
    protected boolean threadSuspended = true;
  
-   public Player( Socket s, ServerGomoku t, int num )
+   public Player( Socket s, ServerGomoku t, int num ) throws IOException
    {
       if ( num == 0 )
           mark = 'X';
@@ -372,6 +398,7 @@ class Player extends Thread {
       }
       catch( IOException e ) {
          e.printStackTrace();
+         connection.close();
          System.exit( 1 );
       }
  
@@ -459,11 +486,27 @@ class Player extends Thread {
             }
          }         
          output.writeUTF("WINNER " + currMark);
+         control.broadcastAll("CLOSED CONNECTION");
          connection.close();
       }
+      catch( SocketException e ) {
+            System.out.println("There are player disconnection");
+            control.display("There are player disconnection");
+            try {
+                connection.close();
+            } catch (IOException ex) {
+                Logger.getLogger(Player.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            System.exit( 1 );
+      }
       catch( IOException e ) {
-         e.printStackTrace();
-         System.exit( 1 );
+            e.printStackTrace();
+            try {
+                   connection.close();
+               } catch (IOException ex) {
+                   Logger.getLogger(Player.class.getName()).log(Level.SEVERE, null, ex);
+               }
+            System.exit( 1 );
       }
    }
 }                                                         

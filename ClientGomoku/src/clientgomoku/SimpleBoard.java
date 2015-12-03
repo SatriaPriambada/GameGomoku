@@ -103,7 +103,7 @@ public class SimpleBoard {
 
     	//check draw
     	if(moveCount == (pow(n,2) - 1)){
-    		//report draw
+            //report draw
             System.out.println("Its a draw ");
             exit(1);
 
