@@ -15,6 +15,7 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -26,29 +27,34 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyEvent;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JApplet;
+import javax.swing.JButton;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
-public class ClientGomoku extends JApplet
-                             implements Runnable {
+public class ClientGomoku extends JApplet implements Runnable {
    private JTextField id;
    private JTextArea display;
    private JTextField sendPanel;
-   private JPanel boardPanel, panel2;
+   private JButton buttonStart;
+   private JButton buttonNewRoom;
+   private JButton buttonJoinRoom;
+   private JButton buttonDisconnect;
+   private JPanel boardPanel, panelEast, panelSouth;
    private Square board[][], currentSquare;
    private Socket connection;
    private DataInputStream input;
    private DataOutputStream output;
    private Thread outputThread;
    private char myMark;
-   private boolean myTurn; 
+   private String inUsernameStr;
+   private String inIPaddr;
+   private boolean myTurn;
    // Set up user-interface and board
    @Override
    public void init()
@@ -56,13 +62,16 @@ public class ClientGomoku extends JApplet
       display = new JTextArea( 4, 15 );
       sendPanel = new JTextField();
       sendPanel.setEditable(true);
+      buttonStart = new JButton("Start");
+      buttonNewRoom = new JButton("Create New Room");
+      buttonJoinRoom = new JButton("Join Room");
+      buttonDisconnect = new JButton("Disconnect");
       Action action = new AbstractAction()
         {
             @Override
             public void actionPerformed(ActionEvent e)
             {
                 
-                System.out.println("sending message");
                 String broadcastMessage = myMark + " : " + sendPanel.getText() + "\n";
                 sendPanel.setText("");
                 try {
@@ -73,10 +82,50 @@ public class ClientGomoku extends JApplet
             }
         };
       sendPanel.addActionListener(action);
+      
+      buttonStart.addActionListener(new ActionListener() {
+         public void actionPerformed(ActionEvent ae){
+             System.out.println("Clicked start");
+             inUsernameStr = JOptionPane.showInputDialog(null, "Insert Username","Username", JOptionPane.PLAIN_MESSAGE);
+             inIPaddr = JOptionPane.showInputDialog(null, "Insert IP Address", "IP Address" ,JOptionPane.PLAIN_MESSAGE);
+             System.out.println("You have entered " + inUsernameStr);
+             JOptionPane.showMessageDialog(null, "Your username : " + inUsernameStr,
+                   "Confirm Username", JOptionPane.PLAIN_MESSAGE);
+             int answer = JOptionPane.showConfirmDialog(null, "Are you sure to connect to IP " + inIPaddr,
+                   "Confirm IP", JOptionPane.YES_NO_OPTION);
+             switch (answer) {
+                case JOptionPane.YES_OPTION:
+                   System.out.println("You clicked YES");
+                   id.repaint();
+                   getContentPane().add( id, BorderLayout.WEST );
+                   start(inIPaddr);
+                   break;
+                case JOptionPane.NO_OPTION:
+                   System.out.println("You clicked NO"); break;
+            }
+         } 
+      });
+      
+      buttonNewRoom.addActionListener(new ActionListener() {
+         public void actionPerformed(ActionEvent ae){
+             System.out.println("Clicked");
+         } 
+      });
+      
+      buttonDisconnect.addActionListener(new ActionListener() {
+         public void actionPerformed(ActionEvent ae){
+             System.out.println("Clicked");
+         } 
+      });
+      
+      buttonStart.addActionListener(new ActionListener() {
+         public void actionPerformed(ActionEvent ae){
+             System.out.println("Clicked");
+         } 
+      });
 
       display.setEditable( false );
-      getContentPane().add( new JScrollPane( display ),
-                            BorderLayout.EAST );
+      getContentPane().add( new JScrollPane( display ),BorderLayout.EAST );
  
       boardPanel = new JPanel();
       GridLayout layout = new GridLayout( 20, 20, 0, 0 );
@@ -84,11 +133,7 @@ public class ClientGomoku extends JApplet
  
       board = new Square[ 20 ][ 20 ];
  
-      // When creating a Square, the location argument to the
-      // constructor is a value from 0 to 8 indicating the
-      // position of the Square on the board. Values 0, 1,
-      // and 2 are the first row, values 3, 4, and 5 are the
-      // second row. Values 6, 7, and 8 are the third row.
+      // Create playing board 20 x 20
       for ( int row = 0; row < board.length; row++ )
       {
          for ( int col = 0;col < board[ row ].length; col++ ) {
@@ -101,44 +146,52 @@ public class ClientGomoku extends JApplet
          }
       }
  
-      id = new JTextField();
-      id.setEditable( false );
+      id = new JTextField("Username:" + inUsernameStr);
+      id.setEditable( true );
        
-      getContentPane().add( id, BorderLayout.NORTH );
+      
        
-      panel2 = new JPanel();
-      panel2.add( boardPanel, BorderLayout.CENTER );
-      getContentPane().add(sendPanel,BorderLayout.NORTH);
-      getContentPane().add( panel2, BorderLayout.CENTER );
+      panelEast = new JPanel();
+      panelEast.add( boardPanel, BorderLayout.CENTER );
+      panelSouth = new JPanel();
+      panelSouth.add (buttonStart);
+      panelSouth.add (buttonNewRoom);
+      panelSouth.add (buttonJoinRoom);
+      panelSouth.add (buttonDisconnect);
+      
+      getContentPane().add( panelSouth,BorderLayout.SOUTH);
+      getContentPane().add( sendPanel,BorderLayout.NORTH);
+      getContentPane().add( panelEast, BorderLayout.CENTER );
+      
    }
  
    // Make connection to server and get associated streams.
    // Start separate thread to allow this applet to
    // continually update its output in text area display.
-   public void start()
-   {
-      try {
-         connection = new Socket(
-            InetAddress.getByName( "127.0.0.1" ), 7777 );
-         input = new DataInputStream(connection.getInputStream() );
-         output = new DataOutputStream( connection.getOutputStream() );
-      }
-      catch ( IOException e ) {
-         e.printStackTrace();         
-      }
- 
-      outputThread = new Thread( this );
-      outputThread.start();
-   }
+    public void start(String host)
+    {
+        
+        try {
+           connection = new Socket(InetAddress.getByName( host ), 7777 );
+           input = new DataInputStream(connection.getInputStream() );
+           output = new DataOutputStream( connection.getOutputStream() );
+        }
+        catch ( IOException e ) {
+           e.printStackTrace();         
+        }
+
+        outputThread = new Thread( this );
+        outputThread.start();
+    }
  
    // Control thread that allows continuous update of the
    // text area display.
    public void run()
    {
-      // First get player's mark (X or O)
+      // First get player's mark (X, O, or #)
       try {
          myMark = input.readChar();
-         id.setText( "You are player \"" + myMark + "\"" );
+         id.setText( "You are player \"" + inUsernameStr + "\"" );
          if( myMark == 'X' ){
              myTurn = true;
          }else if( myMark == 'O' ){

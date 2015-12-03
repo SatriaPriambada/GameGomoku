@@ -15,7 +15,6 @@ import java.awt.event.*;
 import java.net.*;
 import java.io.*;
 import static java.lang.Math.pow;
-import static java.lang.System.exit;
 import javax.swing.*;
  
 public class ServerGomoku extends JFrame {
@@ -239,7 +238,7 @@ public class ServerGomoku extends JFrame {
 
     	//check draw
     	if(moveCount == (pow(n,2) - 1)){
-    		//report draw
+            //report draw
             System.out.println("Its a draw ");
             return true;
 
