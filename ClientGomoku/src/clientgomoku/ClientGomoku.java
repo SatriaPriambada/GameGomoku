@@ -142,12 +142,7 @@ public class ClientGomoku extends JApplet implements Runnable {
              System.out.println("Clicked");
          } 
       });
-      
-      buttonStart.addActionListener(new ActionListener() {
-         public void actionPerformed(ActionEvent ae){
-             System.out.println("Clicked");
-         } 
-      });
+             
 
       display.setEditable( false );
       getContentPane().add( new JScrollPane( display ),BorderLayout.EAST );
