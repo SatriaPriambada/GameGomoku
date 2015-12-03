@@ -107,9 +107,34 @@ public class ClientGomoku extends JApplet implements Runnable {
       });
       
       buttonNewRoom.addActionListener(new ActionListener() {
+        // When button is clicked, send message to the server
+        // create new board of game on th server
+         @Override
          public void actionPerformed(ActionEvent ae){
              System.out.println("Clicked");
+             try {
+                 output.writeUTF("CREATE_NEW_ROOM");
+             } catch (IOException ex) {
+                 Logger.getLogger(ClientGomoku.class.getName()).log(Level.SEVERE, null, ex);
+             }
          } 
+      });
+      
+      buttonJoinRoom.addActionListener(new ActionListener() {
+        // When button is clicked, send message to the server
+        // requesting the list of board that is being active in the server
+        // Show the list of room which are ready to play
+        // Choose the room by using the room 
+         @Override
+         public void actionPerformed(ActionEvent ae){
+             System.out.println("Clicked");
+             try {
+                 output.writeUTF("SEND_ROOM_INFO");
+             } catch (IOException ex) {
+                 Logger.getLogger(ClientGomoku.class.getName()).log(Level.SEVERE, null, ex);
+             }
+         }
+         
       });
       
       buttonDisconnect.addActionListener(new ActionListener() {
